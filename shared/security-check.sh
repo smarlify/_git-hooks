@@ -37,22 +37,41 @@ SENSITIVE_PATTERNS=(
     "VITE_.*=\s*['\"][^'\"]*['\"]"         # Vite env vars with actual values
     "password\s*=\s*['\"][^'\"]*['\"]"     # Password fields with actual values
     "secret\s*=\s*['\"][^'\"]*['\"]"       # Secret fields with actual values
-    "token\s*=\s*['\"][^'\"]*['\"]"        # Token fields with actual values
+    "(^|[^?&])token\s*=\s*['\"][^'\"]*['\"]"  # Token fields with actual values (not a ?token= / &token= URL query)
     "api.*key\s*=\s*['\"][^'\"]*['\"]"     # API key fields with actual values
 )
 
+# This file lists the patterns as text, so it matches itself. It is skipped
+# only when the file being scanned is this very script (the kit's own repo).
+SECURITY_CHECK_SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/$(basename "${BASH_SOURCE[0]}")"
+
 # Function to check files for sensitive data
+# $3 (optional): the commit to read the files from. Without it, the staged
+# (index) version is read. A pushed commit must be scanned at its own content,
+# not at whatever the current checkout has staged.
 check_files_for_sensitive_data() {
     local files="$1"
     local context="$2"  # "staged files" or "commits"
-    
+    local rev="${3:-}"
+
     echo "${YELLOW}🔒 Checking for sensitive data in $context...${NC}"
-    
+
     local sensitive_found=false
-    
-    for file in $files; do
+    local top
+    top=$(git rev-parse --show-toplevel 2>/dev/null) && top=$(cd "$top" && pwd -P)
+
+    # One path per line, so names with spaces are scanned too.
+    while IFS= read -r file; do
+        [ -z "$file" ] && continue
+        if [ -n "$top" ] && [ "$top/$file" = "$SECURITY_CHECK_SELF" ]; then
+            continue
+        fi
         # Skip binary files
-        if git diff --cached --numstat "$file" 2>/dev/null | grep -q "^-"; then
+        if [ -n "$rev" ]; then
+            if git diff-tree --no-commit-id --numstat -r "$rev" -- "$file" 2>/dev/null | grep -q "^-"; then
+                continue
+            fi
+        elif git diff --cached --numstat "$file" 2>/dev/null | grep -q "^-"; then
             continue
         fi
         
@@ -70,7 +89,7 @@ check_files_for_sensitive_data() {
                 continue
             fi
             
-            if git show ":$file" 2>/dev/null | grep -iE "$pattern" >/dev/null 2>&1; then
+            if git show "${rev}:$file" 2>/dev/null | grep -iE "$pattern" >/dev/null 2>&1; then
                 echo "${RED}❌ SECURITY VIOLATION DETECTED!${NC}"
                 echo "${RED}File: $file${NC}"
                 echo "${RED}Pattern: $pattern${NC}"
@@ -93,8 +112,8 @@ check_files_for_sensitive_data() {
                 sensitive_found=true
             fi
         done
-    done
-    
+    done <<< "$files"
+
     if [ "$sensitive_found" = true ]; then
         echo "${RED}🚨 COMMIT BLOCKED: Sensitive data detected!${NC}"
         echo "${RED}Please remove all sensitive information before committing.${NC}"
@@ -121,7 +140,7 @@ check_commits() {
     for commit in $commits; do
         if [ "$commit" != "0000000000000000000000000000000000000000" ]; then
             local changed_files=$(git diff-tree --no-commit-id --name-only -r "$commit")
-            if ! check_files_for_sensitive_data "$changed_files" "commit $commit"; then
+            if ! check_files_for_sensitive_data "$changed_files" "commit $commit" "$commit"; then
                 sensitive_found=true
             fi
         fi
