@@ -25,16 +25,16 @@ SENSITIVE_PATTERNS=(
     "-----BEGIN (RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----"  # Private keys
     "AKIA[0-9A-Z]{16}"       # AWS access keys
     "ya29\.[0-9A-Za-z_-]+"   # Google OAuth tokens
-    "1/[0-9A-Za-z_-]{43}"    # Google refresh tokens
+    "(^|[^0-9A-Za-z_/-])1/[0-9A-Za-z_-]{43}"  # Google refresh tokens (not inside a URL path like /2024/11/...)
     "AIzaSy[0-9A-Za-z_-]{33}" # Firebase API keys
     "firebase.*api.*key"      # Firebase config
     "mongodb://.*:.*@"        # MongoDB connection strings
     "postgres://.*:.*@"       # PostgreSQL connection strings
     "mysql://.*:.*@"          # MySQL connection strings
     "redis://.*:.*@"          # Redis connection strings
-    "NEXT_PUBLIC_.*=\s*['\"][^'\"]*['\"]"  # Next.js public env vars with actual values
-    "REACT_APP_.*=\s*['\"][^'\"]*['\"]"    # React app env vars with actual values
-    "VITE_.*=\s*['\"][^'\"]*['\"]"         # Vite env vars with actual values
+    "(^|[^A-Za-z0-9_])NEXT_PUBLIC_.*=\s*['\"][^'\"]*['\"]"  # Next.js public env vars with actual values
+    "(^|[^A-Za-z0-9_])REACT_APP_.*=\s*['\"][^'\"]*['\"]"    # React app env vars with actual values
+    "(^|[^A-Za-z0-9_])VITE_.*=\s*['\"][^'\"]*['\"]"         # Vite env vars with actual values (not "invite_...")
     "password\s*=\s*['\"][^'\"]*['\"]"     # Password fields with actual values
     "secret\s*=\s*['\"][^'\"]*['\"]"       # Secret fields with actual values
     "(^|[^?&])token\s*=\s*['\"][^'\"]*['\"]"  # Token fields with actual values (not a ?token= / &token= URL query)
@@ -85,7 +85,7 @@ check_files_for_sensitive_data() {
         # Check file content for sensitive patterns
         for pattern in "${SENSITIVE_PATTERNS[@]}"; do
             # Skip Google refresh token pattern for lock files
-            if [ "$skip_google_token_check" = true ] && [ "$pattern" = "1/[0-9A-Za-z_-]{43}" ]; then
+            if [ "$skip_google_token_check" = true ] && [[ "$pattern" == *"1/[0-9A-Za-z_-]{43}" ]]; then
                 continue
             fi
             
