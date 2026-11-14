@@ -42,6 +42,8 @@ source "$SCRIPT_DIR/shared/security-check.sh"
 source "$SCRIPT_DIR/shared/personal-data-check.sh"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/shared/quality-checks.sh"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/shared/neutral-plans-check.sh"
 
 # CRITICAL: Check for sensitive data in staged files
 if ! check_staged_files; then
@@ -49,6 +51,11 @@ if ! check_staged_files; then
 fi
 
 if ! check_personal_data_staged; then
+    exit 1
+fi
+
+# Opt-in (git config hooks.neutralPlans): plans in a shared repo stay neutral
+if ! check_neutral_plans_staged; then
     exit 1
 fi
 

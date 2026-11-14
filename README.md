@@ -99,6 +99,24 @@ Automatically scans your code for sensitive data before committing or pushing:
 
 **What happens**: If sensitive data is detected, the commit/push is blocked with helpful error messages and suggestions on how to fix it.
 
+### 🧭 Neutral plans (`pre-commit` & `pre-push`, opt-in)
+
+For a shared repo (this kit, a manifest) that keeps plans but must never reveal the project a plan came from. Off unless the repo turns it on in **local** git config, which is never committed:
+
+```bash
+git config hooks.neutralPlans true
+git config hooks.forbiddenNames "acme,acme-portal,client-x"   # comma list, whole words, case-insensitive
+git config hooks.neutralPaths ".cursor/plans/"                 # optional, comma list of path prefixes (default shown)
+git config hooks.ownRepos "owner/mirror"                       # optional, extra allowed repo links
+```
+
+A file under those paths is refused when it contains:
+- a word from `hooks.forbiddenNames` (the app, product, client or workspace names)
+- a local path (`/Users/<name>/`, `/home/<name>/`, `C:\Users\`)
+- a `github.com/<owner>/<repo>` link other than the repo's own `origin` (or `hooks.ownRepos`)
+
+**Fix:** describe the change to the shared repo, not the project it came from, or keep the plan in the project's own workspace. A workspace's setup script usually sets these keys when it clones the shared repos.
+
 ### 📝 Code Quality Checks (`pre-commit`)
 
 Checks are **capability-based** at the **repo root**. A check runs only when the project exposes it.
