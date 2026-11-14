@@ -1,0 +1,3 @@
+
+# Plans belong to each workspace (.cursor/plans there), never to the shared hook kit.
+.cursor/plans/
