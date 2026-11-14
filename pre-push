@@ -47,6 +47,8 @@ source "$SCRIPT_DIR/shared/security-check.sh"
 source "$SCRIPT_DIR/shared/personal-data-check.sh"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/shared/quality-checks.sh"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/shared/neutral-plans-check.sh"
 
 # Launch post-push detached. pre-push must not call GitHub and must not wait
 # on the GitHub API. The push still runs the secret, main/master, and test checks.
@@ -111,6 +113,11 @@ if ! check_commits "$COMMITS_TO_CHECK"; then
 fi
 
 if ! check_personal_data_commits "$COMMITS_TO_CHECK"; then
+    exit 1
+fi
+
+# Opt-in (git config hooks.neutralPlans): plans in a shared repo stay neutral
+if ! check_neutral_plans_commits "$COMMITS_TO_CHECK"; then
     exit 1
 fi
 
